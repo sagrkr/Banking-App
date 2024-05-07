@@ -2,9 +2,11 @@ package com.sagar.bankingapp.Services.impl;
 
 import com.sagar.bankingapp.Dtos.AccountInfo;
 import com.sagar.bankingapp.Dtos.BankResponse;
+import com.sagar.bankingapp.Dtos.EmailDetails;
 import com.sagar.bankingapp.Dtos.UserRequest;
 import com.sagar.bankingapp.Entities.User;
 import com.sagar.bankingapp.Repositories.UserRepo;
+import com.sagar.bankingapp.Services.EmailService;
 import com.sagar.bankingapp.Services.UserService;
 import com.sagar.bankingapp.Utils.AccountUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +17,8 @@ import java.math.BigDecimal;
 public class UserServiceImpl implements UserService {
     @Autowired
     UserRepo userRepo;
+    @Autowired
+    EmailService emailService;
     @Override
     public BankResponse createAccount(UserRequest userRequest) {
         /**
@@ -45,6 +49,14 @@ public class UserServiceImpl implements UserService {
                 .build();
 
         User savedUser = userRepo.save(newUser);
+
+        //send email Alert
+        EmailDetails emailDetails = EmailDetails.builder()
+                .recipient(savedUser.getEmail())
+                .subject("ACCOUNT CREATION")
+                .messageBody("Congratulations! Your Account Has Been Created Successfully.\nYour Account Details: \n Account Name: " + savedUser.getFirstName() + " " + savedUser.getLastName() + " " + savedUser.getOtherName() + "\nAccount Number: " + savedUser.getAccountNumber())
+                .build();
+        emailService.SendEmailAlert(emailDetails);
 
         return BankResponse.builder()
                 .responseCode(AccountUtils.ACCOUNT_CREATION_SUCCESS)
