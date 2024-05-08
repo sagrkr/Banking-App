@@ -1,9 +1,6 @@
 package com.sagar.bankingapp.Services.impl;
 
-import com.sagar.bankingapp.Dtos.AccountInfo;
-import com.sagar.bankingapp.Dtos.BankResponse;
-import com.sagar.bankingapp.Dtos.EmailDetails;
-import com.sagar.bankingapp.Dtos.UserRequest;
+import com.sagar.bankingapp.Dtos.*;
 import com.sagar.bankingapp.Entities.User;
 import com.sagar.bankingapp.Repositories.UserRepo;
 import com.sagar.bankingapp.Services.EmailService;
@@ -27,11 +24,12 @@ public class UserServiceImpl implements UserService {
          */
         if(userRepo.existsByEmail(userRequest.getEmail())){
             return BankResponse.builder()
-                    .responseCode(AccountUtils.ACCOUNT_EXISTS_CODE)
-                    .responseMessage(AccountUtils.ACCOUNT_EXISTS_MESSAGE)
+                    .responseCode(AccountUtils.ACCOUNT_EXIST_CODE)
+                    .responseMessage(AccountUtils.ACCOUNT_EXIST_MESSAGE)
                     .accountInfo(null)
                     .build();
         }
+
 
         User newUser = User.builder()
                 .firstName(userRequest.getFirstName())
@@ -68,4 +66,40 @@ public class UserServiceImpl implements UserService {
                         .build())
                 .build();
     }
+
+    // balance Enquiry, name Enquiry, credit, debit, transfer
+    @Override
+    public BankResponse balanceEnquiry(EnquiryRequest request) {
+        boolean isAccountExist = userRepo.existsByAccountNumber(request.getAccountNumber());
+        if(!isAccountExist){
+            return BankResponse.builder()
+                    .responseCode(AccountUtils.ACCOUNT_NOT_EXIST_CODE)
+                    .responseMessage(AccountUtils.ACCOUNT_NOT_EXIST_CODE)
+                    .accountInfo(null)
+                    .build();
+        }
+
+        User foundUser = userRepo.findByAccountNumber(request.getAccountNumber());
+        return BankResponse.builder()
+                .responseCode(AccountUtils.ACCOUNT_EXIST_CODE)
+                .responseMessage(AccountUtils.ACCOUNT_EXIST_MESSAGE)
+                .accountInfo(AccountInfo.builder()
+                        .accountBalance(foundUser.getAccountBalance())
+                        .accountNumber(foundUser.getAccountNumber())
+                        .accountName(foundUser.getFirstName() + " " + foundUser.getLastName() + " " + foundUser.getOtherName())
+                        .build())
+                .build();
+    }
+
+    @Override
+    public String nameEnquiry(EnquiryRequest request) {
+        boolean isAccountExist = userRepo.existsByAccountNumber(request.getAccountNumber());
+
+        if(!isAccountExist)
+            return AccountUtils.ACCOUNT_NOT_EXIST_MESSAGE;
+
+        User foundUser = userRepo.findByAccountNumber(request.getAccountNumber());
+        return foundUser.getFirstName() + " " + foundUser.getLastName() + " " + foundUser.getOtherName();
+    }
+
 }
