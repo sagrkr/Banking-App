@@ -1,6 +1,7 @@
 package com.sagar.bankingapp.Controllers;
 
 import com.sagar.bankingapp.Dtos.BankResponse;
+import com.sagar.bankingapp.Dtos.CreditDebitRequest;
 import com.sagar.bankingapp.Dtos.EnquiryRequest;
 import com.sagar.bankingapp.Dtos.UserRequest;
 import com.sagar.bankingapp.Services.UserService;
@@ -27,5 +28,15 @@ public class UserController {
     @GetMapping("nameEnquiry")
     public String nameEnquiry(@RequestBody EnquiryRequest request){
         return userService.nameEnquiry(request);
+    }
+
+    @PostMapping("credit")
+    public BankResponse creditAccount(@RequestBody CreditDebitRequest request){
+        return userService.creditAccount(request);
+    }
+
+    @PostMapping("debit")
+    public BankResponse debitAccount(@RequestBody CreditDebitRequest request){
+        return userService.debitAccount(request);
     }
 }
