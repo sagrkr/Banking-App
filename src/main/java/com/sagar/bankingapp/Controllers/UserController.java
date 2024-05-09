@@ -1,9 +1,6 @@
 package com.sagar.bankingapp.Controllers;
 
-import com.sagar.bankingapp.Dtos.BankResponse;
-import com.sagar.bankingapp.Dtos.CreditDebitRequest;
-import com.sagar.bankingapp.Dtos.EnquiryRequest;
-import com.sagar.bankingapp.Dtos.UserRequest;
+import com.sagar.bankingapp.Dtos.*;
 import com.sagar.bankingapp.Services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -38,5 +35,10 @@ public class UserController {
     @PostMapping("debit")
     public BankResponse debitAccount(@RequestBody CreditDebitRequest request){
         return userService.debitAccount(request);
+    }
+
+    @PostMapping("transfer")
+    public BankResponse transfer(@RequestBody TransferRequest request){
+        return userService.transfer(request);
     }
 }
