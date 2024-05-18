@@ -1,12 +1,21 @@
 package com.sagar.bankingapp.Services.impl;
 
+import com.sagar.bankingapp.Config.JwtTokenProvider;
 import com.sagar.bankingapp.Dtos.*;
+import com.sagar.bankingapp.Entities.Role;
+import com.sagar.bankingapp.Entities.Transaction;
 import com.sagar.bankingapp.Entities.User;
+import com.sagar.bankingapp.Repositories.TransactionRepo;
 import com.sagar.bankingapp.Repositories.UserRepo;
 import com.sagar.bankingapp.Services.EmailService;
+import com.sagar.bankingapp.Services.TransactionService;
 import com.sagar.bankingapp.Services.UserService;
 import com.sagar.bankingapp.Utils.AccountUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -16,6 +25,15 @@ public class UserServiceImpl implements UserService {
     UserRepo userRepo;
     @Autowired
     EmailService emailService;
+    @Autowired
+    TransactionService transactionService;
+    @Autowired
+    PasswordEncoder passwordEncoder;
+    @Autowired
+    AuthenticationManager authenticationManager;
+    @Autowired
+    JwtTokenProvider jwtTokenProvider;
+
     @Override
     public BankResponse createAccount(UserRequest userRequest) {
         /**
@@ -41,9 +59,11 @@ public class UserServiceImpl implements UserService {
                 .accountNumber(AccountUtils.generateAccountNumber())
                 .accountBalance(BigDecimal.ZERO)
                 .email(userRequest.getEmail())
+                .password(passwordEncoder.encode(userRequest.getPassword()))
                 .phoneNumber(userRequest.getPhoneNumber())
                 .alternativePhoneNumber(userRequest.getAlternativePhoneNumber())
                 .status("ACTIVE")
+                .role(Role.valueOf("ROLE_ADMIN"))
                 .build();
 
         User savedUser = userRepo.save(newUser);
@@ -64,6 +84,25 @@ public class UserServiceImpl implements UserService {
                         .accountNumber(savedUser.getAccountNumber())
                         .accountName(savedUser.getFirstName() + " " + savedUser.getLastName() + " " + savedUser.getOtherName())
                         .build())
+                .build();
+    }
+
+    public BankResponse login(LoginDto loginDto){
+        Authentication authentication = null;
+        authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(loginDto.getEmail(), loginDto.getPassword())
+        );
+
+        EmailDetails loginAlert = EmailDetails.builder()
+                .subject("You are logged in!")
+                .recipient(loginDto.getEmail())
+                .messageBody("You logged into your account. if you did not initiate this request, please contact your bank")
+                .build();
+
+        emailService.SendEmailAlert(loginAlert);
+        return BankResponse.builder()
+                .responseCode("Login Success")
+                .responseMessage(jwtTokenProvider.generateToken(authentication))
                 .build();
     }
 
@@ -124,6 +163,14 @@ public class UserServiceImpl implements UserService {
         userToCredit.setAccountBalance(userToCredit.getAccountBalance().add(request.getAmount()));
         userRepo.save(userToCredit);
 
+        //save transaction
+        TransactionDto transactionDto = TransactionDto.builder()
+                .accountNumber(userToCredit.getAccountNumber())
+                .transactionType("CREDIT")
+                .amount(request.getAmount())
+                .build();
+        transactionService.saveTransaction(transactionDto);
+
         return BankResponse.builder()
                 .responseCode(AccountUtils.ACCOUNT_CREDITED_SUCCESS)
                 .responseMessage(AccountUtils.ACCOUNT_CREDITED_SUCCESS_MESSAGE)
@@ -167,6 +214,15 @@ public class UserServiceImpl implements UserService {
         else{
             userToDebit.setAccountBalance(userToDebit.getAccountBalance().subtract(request.getAmount()));
             userRepo.save(userToDebit);
+
+            //save transaction
+            TransactionDto transactionDto = TransactionDto.builder()
+                    .accountNumber(userToDebit.getAccountNumber())
+                    .transactionType("DEBIT")
+                    .amount(request.getAmount())
+                    .build();
+            transactionService.saveTransaction(transactionDto);
+
             return BankResponse.builder()
                     .responseCode(AccountUtils.ACCOUNT_DEBITED_SUCCESS)
                     .responseMessage(AccountUtils.ACCOUNT_DEBITED_SUCCESS_MESSAGE)
@@ -230,6 +286,14 @@ public class UserServiceImpl implements UserService {
                 .messageBody("The sum of " + request.getAmount() + " has been sent to your account from " + sourceUserName + "\nYour Current balance is: " + destinationAccountUser.getAccountBalance())
                 .build();
         emailService.SendEmailAlert(creditAlert);
+
+        //save transaction
+        TransactionDto transactionDto = TransactionDto.builder()
+                .accountNumber(destinationAccountUser.getAccountNumber())
+                .transactionType("CREDIT")
+                .amount(request.getAmount())
+                .build();
+        transactionService.saveTransaction(transactionDto);
 
         return BankResponse.builder()
                 .responseCode(AccountUtils.TRANSFER_SUCCESSFUL_CODE)
